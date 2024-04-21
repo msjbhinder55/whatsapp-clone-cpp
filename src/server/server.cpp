@@ -6,14 +6,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <thread>
-
-// Define the server port
-constexpr int SERVER_PORT = 9090;
-// Define the maximum number of clients that can connect to the server
-constexpr int MAX_CLIENTS = 10;
-
-// Function declarations
-void handleClient(int clientSocket);
+#include "server.h"
 
 int main() {
     int serverSocket, clientSocket;
@@ -77,4 +70,49 @@ void handleClient(int clientSocket) {
     // Close the socket when done
     close(clientSocket);
     std::cout << "Client disconnected." << std::endl;
+}
+
+void startServer() {
+    int serverSocket, clientSocket;
+    struct sockaddr_in serverAddr, clientAddr;
+    socklen_t clientAddrLen = sizeof(clientAddr);
+
+    // Create the server socket
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket == -1) {
+        std::cerr << "Failed to create socket." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    // Bind the socket to an IP / port
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(SERVER_PORT);
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+
+    if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+        std::cerr << "Failed to bind to port." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    // Listen
+    if (listen(serverSocket, MAX_CLIENTS) < 0) {
+        std::cerr << "Failed to listen on socket." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    std::cout << "Server is listening on port " << SERVER_PORT << std::endl;
+
+    // Accept calls
+    while ((clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &clientAddrLen))) {
+        if (clientSocket < 0) {
+            std::cerr << "Failed to accept client connection." << std::endl;
+            continue;
+        }
+
+        // Handle client in a separate thread
+        std::thread clientThread(handleClient, clientSocket);
+        clientThread.detach(); // Detach the thread to handle multiple clients
+    }
+
+    // Close the listening socket
+    close(serverSocket);
 }
