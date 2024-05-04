@@ -1,48 +1,100 @@
-// Main client application code
-
 #include <iostream>
 #include <string>
-#include <thread>
-#include <mutex>
+#include <cstring>
 #include <vector>
-#include <unistd.h> // For sleep(), optional
+#include <sys/socket.h>
+#include <arpa/inet.h>  // For inet_addr()
+#include <unistd.h>     // For close()
+#include <thread>
 
-// Function to handle receiving messages from the server
-void receiveMessages() {
-    while (true) {
-        // Placeholder for receiving messages from the server
-        // Process received messages and update the UI accordingly
-        std::cout << "Received a message from the server.\n";
-        // Simulating message reception every 2 seconds (remove this in actual implementation)
-        sleep(2);
+constexpr int SERVER_PORT = 12345;
+constexpr char SERVER_IP[] = "127.0.0.1";
+
+class ChatClient {
+private:
+    int sock;
+    struct sockaddr_in server;
+
+    bool connectToServer() {
+        this->sock = socket(AF_INET, SOCK_STREAM, 0);
+        if (this->sock == -1) {
+            std::cerr << "Could not create socket" << std::endl;
+            return false;
+        }
+
+        server.sin_addr.s_addr = inet_addr(SERVER_IP);
+        server.sin_family = AF_INET;
+        server.sin_port = htons(SERVER_PORT);
+
+        if (connect(sock, (struct sockaddr *)&server, sizeof(server)) < 0) {
+            perror("Connect failed. Error");
+            return false;
+        }
+
+        std::cout << "Connected to server" << std::endl;
+        return true;
     }
-}
 
-// Function to send a message to the server
-void sendMessage(const std::string& message) {
-    // Placeholder for sending message to the server
-    std::cout << "Sending message to the server: " << message << "\n";
-}
-
-// Function to handle user input for sending messages
-void handleUserInput() {
-    while (true) {
-        std::string message;
-        std::getline(std::cin, message);
-        sendMessage(message);
+    void sendMessage(const std::string& message) {
+        if (send(sock, message.c_str(), message.size(), 0) < 0) {
+            std::cerr << "Send failed" << std::endl;
+            return;
+        }
     }
-}
+
+    std::string receiveMessage() {
+        char buffer[2000];
+        if (recv(sock, buffer, sizeof(buffer), 0) < 0) {
+            std::cerr << "recv failed" << std::endl;
+            return "";
+        }
+        return std::string(buffer);
+    }
+
+public:
+    ChatClient() : sock(-1) {
+        memset(&server, 0, sizeof(server));
+    }
+
+    ~ChatClient() {
+        close(sock);
+    }
+
+    void run() {
+        if (!connectToServer()) {
+            return;
+        }
+
+        std::string input;
+        while (true) {
+            std::cout << "Enter command ('message', 'status', 'file', 'exit'): ";
+            std::getline(std::cin, input);
+
+            if (input == "exit") {
+                break;
+            } else if (input == "message") {
+                std::cout << "Enter your message: ";
+                std::getline(std::cin, input);
+                sendMessage("MSG:" + input);
+            } else if (input == "status") {
+                std::cout << "Enter your status: ";
+                std::getline(std::cin, input);
+                sendMessage("STATUS:" + input);
+            } else if (input == "file") {
+                std::cout << "Enter file path: ";
+                std::getline(std::cin, input);
+                // Implement file sending (this is a placeholder)
+                sendMessage("FILE:" + input);
+            }
+
+            std::string reply = receiveMessage();
+            std::cout << "Server reply: " << reply << std::endl;
+        }
+    }
+};
 
 int main() {
-    // Connect to the server
-    // Placeholder for connecting to the server
-
-    // Start thread for receiving messages from the server
-    std::thread receiveThread(receiveMessages);
-    receiveThread.detach(); // Detach thread to run in background
-
-    // Start thread for handling user input
-    handleUserInput();
-
+    ChatClient client;
+    client.run();
     return 0;
 }
