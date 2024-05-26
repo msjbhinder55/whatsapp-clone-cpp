@@ -1,18 +1,24 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#include <iostream>
-#include <thread>
 #include <vector>
-#include <map>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
+#include <memory>
 
-// Function to handle individual client connections
-void handleClient(int clientSocket);
+class ClientHandler;
+class MessageRouter;
+class GroupChatManager;
 
-// Function to start the server
-void startServer();
+class Server {
+public:
+    Server();
+    ~Server();
+    void start();
+    void stop();
+
+private:
+    std::unique_ptr<ClientHandler> clientHandler;
+    std::unique_ptr<MessageRouter> messageRouter;
+    std::unique_ptr<GroupChatManager> groupChatManager;
+};
 
 #endif // SERVER_H

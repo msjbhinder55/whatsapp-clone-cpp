@@ -1,26 +1,23 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-#include <iostream>
-#include <string>
-#include <cstring>
-#include <sys/socket.h>
-#include <arpa/inet.h>  // For inet_addr()
-#include <unistd.h>     // For close()
+class ConnectionManager;
+class UserInterface;
+class ChatManager;
+class Security;
 
-class ChatClient {
-private:
-    int sock;
-    struct sockaddr_in server;
-
-    bool connectToServer();
-    void sendMessage(const std::string& message);
-    std::string receiveMessage();
-
+class Client {
 public:
-    ChatClient();
-    ~ChatClient();
-    void run();
+    Client();
+    ~Client();
+    void start();
+    void stop();
+
+private:
+    ConnectionManager* connectionManager;
+    UserInterface* userInterface;
+    ChatManager* chatManager;
+    Security* security;
 };
 
 #endif // CLIENT_H
